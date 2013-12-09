@@ -196,6 +196,7 @@
         <module>semagrow-stack-modules-vocabulary</module>
         <module>semagrow-stack-modules-commons</module>
         <module>semagrow-stack-modules-utils</module>
+        <module>semagrow-stack-modules-impl-default</module>
         <module>semagrow-stack-modules-sails</module>
-    </modules>
+  </modules>
 </project>
