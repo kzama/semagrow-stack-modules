@@ -43,6 +43,8 @@ public class QueryExecutorImpl implements QueryExecutor {
 
     private boolean rowIdOpt = false;
 
+    private int countconn = 0;
+
     public void initialize() { }
 
     public void shutdown() { }
@@ -60,7 +62,10 @@ public class QueryExecutorImpl implements QueryExecutor {
         if (!repo.isInitialized())
             repo.initialize();
 
-        return repo.getConnection();
+        RepositoryConnection conn = repo.getConnection();
+        logger.debug("Connection " + conn.toString() +" started, currently open " + countconn);
+        countconn++;
+        return conn;
     }
 
     public CloseableIteration<BindingSet, QueryEvaluationException>
@@ -283,12 +288,12 @@ public class QueryExecutorImpl implements QueryExecutor {
         for (Binding b : bindings)
             query.setBinding(b.getName(), b.getValue());
 
-        logger.debug("Sending to " + endpoint.stringValue() + " query " + sparqlQuery.replace('\n', ' '));
-        return closeConnAfter(conn, query.evaluate());
+        logger.debug("Sending to " + endpoint.stringValue() + " query " + sparqlQuery.replace('\n', ' ')+ " with bindings " + bindings.toString());
+        return closeConnAfter(this, conn, query.evaluate());
     }
 
-    private static <E,X extends Exception> CloseableIteration<E,X> closeConnAfter(RepositoryConnection conn, CloseableIteration<E,X> iter) {
-        return new CloseConnAfterIteration<E,X>(conn,iter);
+    private static <E,X extends Exception> CloseableIteration<E,X> closeConnAfter(QueryExecutorImpl t, RepositoryConnection conn, CloseableIteration<E,X> iter) {
+        return new CloseConnAfterIteration<E,X>(t, conn,iter);
     }
 
     protected boolean
@@ -301,9 +306,11 @@ public class QueryExecutorImpl implements QueryExecutor {
         for (Binding b : bindings)
             query.setBinding(b.getName(), b.getValue());
 
-        logger.debug("Sending to " + endpoint.stringValue() + " query " + sparqlQuery.replace('\n', ' '));
+        logger.debug("Sending to " + endpoint.stringValue() + " query " + sparqlQuery.replace('\n', ' ') + " with bindings " + bindings.toString());
         boolean answer = query.evaluate();
         conn.close();
+        logger.debug("Connection " + conn.toString() + " closed, currently open "+ countconn);
+        countconn--;
         return answer;
     }
 
@@ -565,7 +572,14 @@ public class QueryExecutorImpl implements QueryExecutor {
 
         @Override
         protected void handleBindings() throws QueryEvaluationException {
-            for (BindingSet b : bindings) {
+            for (final BindingSet b : bindings) {
+                /*
+                CloseableIteration<BindingSet,QueryEvaluationException> result = new DelayedIteration<BindingSet, QueryEvaluationException>() {
+                    @Override
+                    protected Iteration<? extends BindingSet, ? extends QueryEvaluationException> createIteration() throws QueryEvaluationException {
+                        return evaluate(endpoint, expr, b);
+                    }
+                };*/
                 CloseableIteration<BindingSet,QueryEvaluationException> result = evaluate(endpoint, expr, b);
                 addResult(result);
             }
@@ -577,11 +591,13 @@ public class QueryExecutorImpl implements QueryExecutor {
     private static class CloseConnAfterIteration<E,X extends Exception> extends IterationWrapper<E,X> {
 
         private RepositoryConnection conn;
+        private QueryExecutorImpl impl;
 
-        public CloseConnAfterIteration(RepositoryConnection conn, Iteration<? extends E, ? extends X> iter) {
+        public CloseConnAfterIteration(QueryExecutorImpl impl, RepositoryConnection conn, Iteration<? extends E, ? extends X> iter) {
             super(iter);
             assert conn != null;
             this.conn = conn;
+            this.impl = impl;
         }
 
         @Override
@@ -589,8 +605,11 @@ public class QueryExecutorImpl implements QueryExecutor {
             super.handleClose();
 
             try {
-                if (conn != null && conn.isOpen())
+                if (conn != null && conn.isOpen()) {
                     conn.close();
+                    impl.logger.debug("Connection " + conn.toString() + " closed, currently open "+ impl.countconn);
+                    impl.countconn--;
+                }
             } catch (RepositoryException e) {
 
             }
