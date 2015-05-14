@@ -16,4 +16,7 @@ public class FileQueryLogConfig implements QueryLogConfig {
         this.filename = filename;
     }
 
+
+    public boolean rotate() { return false; }
+
 }
