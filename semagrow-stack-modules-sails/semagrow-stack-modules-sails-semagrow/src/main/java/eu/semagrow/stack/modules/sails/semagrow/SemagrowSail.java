@@ -175,7 +175,11 @@ public class SemagrowSail extends SailBase implements StackableSail {
 
         QueryLogWriter handler;
 
+        FileQueryLogConfig config = new FileQueryLogConfig();
+
         File qfrLog  = qfrRotation.checkFileChange();
+
+        config.setFilename(qfrLog.getAbsolutePath());
 
         RDFFormat rdfFF = RDFFormat.NTRIPLES;
 
@@ -184,10 +188,9 @@ public class SemagrowSail extends SailBase implements StackableSail {
         QueryLogFactory factory = new RDFQueryLogFactory(rdfWriterFactory);
 
         try {
-            OutputStream out = new FileOutputStream(qfrLog, true);
-            handler = factory.getQueryRecordLogger(out);
+            handler = factory.getQueryRecordLogger(config);
             return handler;
-        } catch (FileNotFoundException e) {
+        } catch (QueryLogConfigException e) {
             e.printStackTrace();
         }
         return null;
