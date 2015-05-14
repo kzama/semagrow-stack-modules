@@ -13,16 +13,8 @@ public class QueryLogCollector implements QueryLogHandler {
     public QueryLogCollector(Collection<QueryLogRecord> collection) { this.collection = collection; }
 
     @Override
-    public void startQueryLog() throws QueryLogException {
-        collection = new LinkedList<QueryLogRecord>();
-    }
-
-    @Override
     public void handleQueryRecord(QueryLogRecord queryLogRecord) throws QueryLogException {
         collection.add(queryLogRecord);
     }
-
-    @Override
-    public void endQueryLog() throws QueryLogException { }
 
 }

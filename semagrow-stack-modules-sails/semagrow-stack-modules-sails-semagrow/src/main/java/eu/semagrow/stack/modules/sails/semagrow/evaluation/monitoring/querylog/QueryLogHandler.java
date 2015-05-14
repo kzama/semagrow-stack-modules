@@ -5,11 +5,6 @@ package eu.semagrow.stack.modules.sails.semagrow.evaluation.monitoring.querylog;
  */
 public interface QueryLogHandler {
 
-
-    void startQueryLog() throws QueryLogException;
-
     void handleQueryRecord(QueryLogRecord queryLogRecord) throws QueryLogException;
-
-    void endQueryLog() throws QueryLogException;
 
 }

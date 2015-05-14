@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * Created by angel on 10/20/14.
  */
-public class RDFQueryLogWriter implements QueryLogHandler {
+public class RDFQueryLogWriter implements QueryLogWriter {
 
     private RDFWriter handler;
     private ValueFactory vf = ValueFactoryImpl.getInstance();

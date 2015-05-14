@@ -21,11 +21,11 @@ public class RDFQueryLogFactory implements QueryLogFactory {
     }
 
     @Override
-    public QueryLogHandler getQueryRecordLogger(OutputStream out) {
+    public QueryLogWriter getQueryRecordLogger(OutputStream out) {
 
         RDFWriter writer = writerFactory.getWriter(out);
 
-        QueryLogHandler handler = new RDFQueryLogWriter(writer);
+        QueryLogWriter handler = new RDFQueryLogWriter(writer);
         try {
             handler.startQueryLog();
         } catch (QueryLogException e) {

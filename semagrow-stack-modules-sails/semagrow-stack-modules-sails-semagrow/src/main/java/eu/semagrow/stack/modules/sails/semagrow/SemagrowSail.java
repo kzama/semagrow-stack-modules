@@ -63,7 +63,7 @@ public class SemagrowSail extends SailBase implements StackableSail {
     private Sail metadataSail;
     private FederatedQueryEvaluation queryEvaluation;
 
-    private QueryLogHandler handler;
+    private QueryLogWriter handler;
 
     private QueryLogRotation qfrRotation = new QueryLogRotation();
 
@@ -171,9 +171,9 @@ public class SemagrowSail extends SailBase implements StackableSail {
         return manager;
     }
 
-    public QueryLogHandler getRecordLog() {
+    public QueryLogWriter getRecordLog() {
 
-        QueryLogHandler handler;
+        QueryLogWriter handler;
 
         File qfrLog  = qfrRotation.checkFileChange();
 
