@@ -1,6 +1,5 @@
 package eu.semagrow.stack.modules.sails.semagrow.evaluation.monitoring.querylog;
 
-import java.io.OutputStream;
 
 /**
  * Created by angel on 10/21/14.
@@ -8,6 +7,6 @@ import java.io.OutputStream;
 public interface QueryLogFactory {
 
     //QueryLogWriter getQueryRecordLogger(OutputStream out);
-    QueryLogWriter getQueryRecordLogger(QueryLogConfig config);
+    QueryLogWriter getQueryRecordLogger(QueryLogConfig config) throws QueryLogConfigException;
 
 }
