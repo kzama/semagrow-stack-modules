@@ -16,15 +16,13 @@ import java.io.IOException;
  */
 public class SemagrowConfig extends SailImplConfigBase {
 
-    public SemagrowConfig() { super(SemagrowFactory.SAIL_TYPE); }
+    public SemagrowConfig() { super(SemagrowSailFactory.SAIL_TYPE); }
 
     public SailImplConfig getMetadataConfig() {
         return new SEVODInferencerConfig(
                 new ForwardChainingRDFSInferencerConfig(
                         new MemoryStoreConfig()));
     }
-
-    //crossDomain.void.n3
 
     public File getMetadataFile() throws IOException { return FileUtils.getFile("metadata.ttl"); }
 }

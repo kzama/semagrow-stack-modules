@@ -1,7 +1,7 @@
 package eu.semagrow.stack.modules.sails.semagrow;
 
 import eu.semagrow.stack.modules.sails.config.VOIDInferencerConfig;
-import eu.semagrow.stack.modules.sails.semagrow.config.SemagrowConfig;
+import eu.semagrow.stack.modules.sails.semagrow.config.SemagrowSailConfig;
 import eu.semagrow.stack.modules.sails.semagrow.config.SemagrowRepositoryConfig;
 import eu.semagrow.stack.modules.api.query.SemagrowTupleQuery;
 import eu.semagrow.stack.modules.vocabulary.VOID;
@@ -44,7 +44,7 @@ public class SemagrowConnectionTest extends TestCase {
                 "{ <htt://localhost/sub> <http://localhost/my> ?z.\n" +
                 "?z <http://rdf.iit.demokritos.gr/2014/my#pred2> \"R\" . } } LIMIT 10" ;
 
-        SailImplConfig config = new SemagrowConfig();
+        SailImplConfig config = new SemagrowSailConfig();
 
         SemagrowRepositoryConfig repoConfig = new SemagrowRepositoryConfig();
         SemagrowSailRepository repo = (SemagrowSailRepository) RepositoryRegistry.getInstance().get(repoConfig.getType()).getRepository(repoConfig);
@@ -86,7 +86,7 @@ public class SemagrowConnectionTest extends TestCase {
                 "SELECT *  { <htt://localhost/sub> <http://localhost/my> ?z. " +
                 "?z <http://rdf.iit.demokritos.gr/2014/my#pred2> \"R\" . } " ;
 
-        SailImplConfig config = new SemagrowConfig();
+        SailImplConfig config = new SemagrowSailConfig();
 
         SemagrowRepositoryConfig repoConfig = new SemagrowRepositoryConfig();
         SemagrowSailRepository repo = (SemagrowSailRepository) RepositoryRegistry.getInstance().get(repoConfig.getType()).getRepository(repoConfig);
@@ -109,7 +109,7 @@ public class SemagrowConnectionTest extends TestCase {
                 "SELECT *  { <htt://localhost/sub> <http://localhost/my> ?z. " +
                 "?z2 <http://rdf.iit.demokritos.gr/2014/my#pred2> ?w . } " ;
 
-        SailImplConfig config = new SemagrowConfig();
+        SailImplConfig config = new SemagrowSailConfig();
 
         SemagrowRepositoryConfig repoConfig = new SemagrowRepositoryConfig();
         SemagrowSailRepository repo = (SemagrowSailRepository) RepositoryRegistry.getInstance().get(repoConfig.getType()).getRepository(repoConfig);

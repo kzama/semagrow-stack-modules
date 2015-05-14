@@ -171,7 +171,10 @@ public class VOIDStatistics extends VOIDBase implements Statistics {
             if (sVal != null)
                 d *= getDistinctSubjects(datasets);
 
-            return getTriplesCount(datasets) / d;
+            if (d > 0 )
+                return getTriplesCount(datasets) / d;
+            else
+                return 0;
         }
     }
 
@@ -195,7 +198,7 @@ public class VOIDStatistics extends VOIDBase implements Statistics {
         if (realData)
             return triples;
         else
-            return null;
+            return (long)0;
     }
 
     private Long getDistinctSubjects(Collection<Resource> datasets) {

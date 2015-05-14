@@ -52,16 +52,22 @@ public class RestrictiveSourceSelector extends SourceSelectorWrapper {
     }
 
     @Override
+    public List<SourceMetadata> getSources(Iterable<StatementPattern> patterns, Dataset dataset, BindingSet bindings)
+    {
+        List<SourceMetadata> list = new LinkedList<SourceMetadata>();
+        for (StatementPattern p : patterns) {
+            list.addAll(this.getSources(p, dataset, bindings));
+        }
+        return list;
+    }
+
+    @Override
     public List<SourceMetadata> getSources(TupleExpr expr, Dataset dataset, BindingSet bindings) {
         if (expr instanceof StatementPattern)
             return getSources((StatementPattern)expr, dataset, bindings);
 
         List<StatementPattern> patterns  = StatementPatternCollector.process(expr);
-        List<SourceMetadata> list = new LinkedList<SourceMetadata>();
-        for (StatementPattern pattern : patterns) {
-            list.addAll(this.getSources(pattern, dataset, bindings));
-        }
-        return list;
+        return getSources(patterns, dataset, bindings);
     }
 
     private List<SourceMetadata> restrictSourceList(List<SourceMetadata> list) {
@@ -105,9 +111,13 @@ public class RestrictiveSourceSelector extends SourceSelectorWrapper {
             return l;
         }
 
-        public StatementPattern originalPattern() { return metadata.originalPattern(); }
+        public StatementPattern original() { return metadata.original(); }
 
-        public boolean requiresTransform() { return metadata.requiresTransform(); }
+        public StatementPattern target() { return metadata.target(); }
+
+        public Collection<URI> getSchema(String var) { return metadata.getSchema(var); }
+
+        public boolean isTransformed() { return metadata.isTransformed(); }
 
         public double getSemanticProximity() { return metadata.getSemanticProximity(); }
     }

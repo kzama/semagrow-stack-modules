@@ -10,10 +10,7 @@ import org.openrdf.model.*;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.QueryEvaluationException;
-import org.openrdf.query.algebra.Join;
-import org.openrdf.query.algebra.Projection;
-import org.openrdf.query.algebra.TupleExpr;
-import org.openrdf.query.algebra.UnaryTupleOperator;
+import org.openrdf.query.algebra.*;
 import org.openrdf.query.algebra.evaluation.TripleSource;
 import org.openrdf.query.algebra.evaluation.federation.JoinExecutorBase;
 import org.openrdf.query.algebra.evaluation.iterator.CollectionIteration;
@@ -22,6 +19,8 @@ import org.openrdf.query.impl.EmptyBindingSet;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Overrides the behavior of the default evaluation strategy implementation.
@@ -40,7 +39,9 @@ public class EvaluationStrategyImpl
 
     private QueryExecutor queryExecutor;
 
-    public EvaluationStrategyImpl(QueryExecutor queryExecutor, final ValueFactory vf) {
+    private ExecutorService executor;
+
+    public EvaluationStrategyImpl(QueryExecutor queryExecutor, final ExecutorService executor, final ValueFactory vf) {
         super(new TripleSource() {
             public CloseableIteration<? extends Statement, QueryEvaluationException>
             getStatements(Resource resource, URI uri, Value value, Resource... resources) throws QueryEvaluationException {
@@ -52,10 +53,12 @@ public class EvaluationStrategyImpl
             }
         });
         setQueryExecutor(queryExecutor);
+        this.executor = executor;
     }
 
-    public EvaluationStrategyImpl(QueryExecutor queryExecutor) {
-        this(queryExecutor,ValueFactoryImpl.getInstance());
+    public EvaluationStrategyImpl(QueryExecutor queryExecutor, final ExecutorService executor)
+    {
+        this(queryExecutor, executor, ValueFactoryImpl.getInstance());
     }
 
     public void setIncludeProvenance(boolean includeProvenance) { this.includeProvenance = includeProvenance; }
@@ -110,7 +113,7 @@ public class EvaluationStrategyImpl
 
         for (URI endpoint : expr.getSources()) {
             CloseableIteration<BindingSet,QueryEvaluationException> iter =
-                    evaluateSourceDelayed(endpoint, innerExpr, bindings);
+                    evaluateSourceAsync(endpoint, innerExpr, bindings);
              results.add(iter);
         }
 
@@ -124,6 +127,20 @@ public class EvaluationStrategyImpl
         return new DelayedIteration<BindingSet, QueryEvaluationException>() {
             @Override
             protected Iteration<? extends BindingSet, ? extends QueryEvaluationException> createIteration()
+                    throws QueryEvaluationException {
+                return evaluateSource(endpoint, expr, bindings);
+            }
+        };
+    }
+
+
+    private CloseableIteration<BindingSet,QueryEvaluationException>
+        evaluateSourceAsync(final URI endpoint, final TupleExpr expr, final BindingSet bindings)
+            throws QueryEvaluationException {
+
+        return new AsyncCursor<BindingSet, QueryEvaluationException>(executor) {
+            @Override
+            protected Iteration<BindingSet, QueryEvaluationException> createIteration()
                     throws QueryEvaluationException {
                 return evaluateSource(endpoint, expr, bindings);
             }
@@ -149,7 +166,8 @@ public class EvaluationStrategyImpl
 
         // transform bindings to evaluate expr and then transform back the result.
         BindingSet bindingsT = bindings;
-        return new TransformIteration(this.evaluate(expr.getArg(), bindingsT));
+        //return new TransformIteration(this.evaluate(expr.getArg(), bindingsT));
+        return this.evaluate(expr.getArg(), bindingsT);
     }
 
     public CloseableIteration<BindingSet,QueryEvaluationException>
@@ -181,7 +199,66 @@ public class EvaluationStrategyImpl
         evaluate(TupleExpr expr, CloseableIteration<BindingSet, QueryEvaluationException> bIter)
             throws QueryEvaluationException
     {
-        return new BatchingIteration(bIter, expr, batchSize);
+        BatchingIteration iter = new BatchingIteration(bIter, expr, batchSize);
+        executor.execute(iter);
+        return iter;
+        //return new BatchingIteration(bIter, expr, batchSize);
+    }
+
+
+    protected CloseableIteration<BindingSet, QueryEvaluationException>
+        evaluateInternal(TupleExpr expr, Iterable<BindingSet> iterable)
+        throws QueryEvaluationException
+    {
+        if (expr instanceof Union) {
+            return evaluateInternal((Union) expr, iterable);
+        } else if (expr instanceof Plan) {
+            return evaluateInternal((Plan) expr, iterable);
+        } else {
+
+            CloseableIteration<BindingSet, QueryEvaluationException> bIter =
+                    new IterationWrapper<BindingSet, QueryEvaluationException>(
+                        new IteratorIteration<BindingSet, QueryEvaluationException>(iterable.iterator()));
+
+            return evaluateInternal(expr, bIter);
+        }
+    }
+
+    protected CloseableIteration<BindingSet, QueryEvaluationException>
+        evaluateInternal(final Union union, final Iterable<BindingSet> iterable)
+            throws QueryEvaluationException
+    {
+
+        Iteration<BindingSet, QueryEvaluationException> leftArg, rightArg;
+
+        leftArg = new AsyncCursor<BindingSet, QueryEvaluationException>(executor) {
+
+            @Override
+            protected Iteration<BindingSet, QueryEvaluationException> createIteration()
+                    throws QueryEvaluationException
+            {
+                return evaluateInternal(union.getLeftArg(), iterable);
+            }
+        };
+
+        rightArg = new AsyncCursor<BindingSet, QueryEvaluationException>(executor) {
+
+            @Override
+            protected Iteration<BindingSet, QueryEvaluationException> createIteration()
+                    throws QueryEvaluationException
+            {
+                return evaluateInternal(union.getRightArg(), iterable);
+            }
+        };
+
+        return new UnionIteration<BindingSet, QueryEvaluationException>(leftArg, rightArg);
+    }
+
+    protected CloseableIteration<BindingSet, QueryEvaluationException>
+        evaluateInternal(final Plan plan, final Iterable<BindingSet> iterable)
+            throws QueryEvaluationException
+    {
+        return evaluateInternal(plan.getArg(), iterable);
     }
 
     protected CloseableIteration<BindingSet,QueryEvaluationException>
@@ -217,20 +294,24 @@ public class EvaluationStrategyImpl
         evaluateInternal(Transform transform, CloseableIteration<BindingSet,QueryEvaluationException> bIter)
             throws QueryEvaluationException {
 
-        CloseableIteration<BindingSet,QueryEvaluationException> bIterT =
-                new TransformIteration(bIter);
+        //CloseableIteration<BindingSet,QueryEvaluationException> bIterT =
+//                new TransformIteration(bIter);
 
-        return new TransformIteration(evaluateInternal(transform.getArg(), bIterT));
+  //      return new TransformIteration(evaluateInternal(transform.getArg(), bIterT));
+        return bIter;
     }
 
     protected CloseableIteration<BindingSet,QueryEvaluationException>
         evaluateInternalDefault(TupleExpr expr, CloseableIteration<BindingSet, QueryEvaluationException> bIter)
             throws QueryEvaluationException {
 
-        return new BatchingIteration(bIter, expr, 1);
+        BatchingIteration iter = new BatchingIteration(bIter, expr, batchSize);
+        executor.execute(iter);
+        return iter;
+        //return new BatchingIteration(bIter, expr, 20);
     }
 
-    protected class BatchingIteration extends JoinExecutorBase<BindingSet> {
+    protected class BatchingIteration extends JoinExecutorBase<BindingSet> implements Runnable {
 
         private final int blockSize;
         private TupleExpr expr;
@@ -242,7 +323,7 @@ public class EvaluationStrategyImpl
 
             this.expr = expr;
             this.blockSize = blockSize;
-            run();
+            //run();
         }
 
         @Override
@@ -253,9 +334,18 @@ public class EvaluationStrategyImpl
                     addResult(evaluate(expr, leftIter.next()));
                     continue;
                 } else {
-                    CloseableIteration<BindingSet, QueryEvaluationException>
-                            materializedIter = createBatchIter(leftIter, blockSize);
-                    addResult(evaluateInternal(expr,materializedIter));
+                    //CloseableIteration<BindingSet, QueryEvaluationException>
+                    //        materializedIter = createBatchIter(leftIter, blockSize);
+                    final Iterable<BindingSet> iterable = createIterable(leftIter, blockSize);
+                    addResult(new DelayedIteration<BindingSet, QueryEvaluationException>() {
+                        @Override
+                        protected Iteration<? extends BindingSet, ? extends QueryEvaluationException> createIteration()
+                                throws QueryEvaluationException
+                        {
+
+                            return evaluateInternal(expr,iterable);
+                        }
+                    });
                 }
             }
         }
@@ -276,6 +366,18 @@ public class EvaluationStrategyImpl
                     new CollectionIteration<BindingSet, QueryEvaluationException>(blockBindings);
 
             return materializedIter;
+        }
+
+        protected Iterable<BindingSet> createIterable(CloseableIteration<BindingSet, QueryEvaluationException> iter, int blockSize)
+            throws QueryEvaluationException
+        {
+            ArrayList<BindingSet> blockBindings = new ArrayList<BindingSet>(blockSize);
+            for (int i = 0; i < blockSize; i++) {
+                if (!iter.hasNext())
+                    break;
+                blockBindings.add(iter.next());
+            }
+            return blockBindings;
         }
 
     }

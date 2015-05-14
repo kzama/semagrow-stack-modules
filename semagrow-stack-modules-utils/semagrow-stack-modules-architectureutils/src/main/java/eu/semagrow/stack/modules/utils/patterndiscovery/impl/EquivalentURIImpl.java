@@ -1,11 +1,10 @@
 /**
  * 
  */
-package eu.semagrow.stack.modules.utils.resourceselector.impl;
-
-import org.openrdf.model.URI;
+package eu.semagrow.stack.modules.utils.patterndiscovery.impl;
 
 import eu.semagrow.stack.modules.api.transformation.EquivalentURI;
+import org.openrdf.model.URI;
 
 
 /* (non-Javadoc)
@@ -16,7 +15,15 @@ public class EquivalentURIImpl implements EquivalentURI {
 	private URI equivalent_URI;
 	private int proximity;
 	private URI schema;
-	/**
+
+    public EquivalentURIImpl(URI equivalent_URI, int proximity, URI schema, int transformationId) {
+        super();
+        this.equivalent_URI = equivalent_URI;
+        this.proximity = proximity;
+        this.schema = schema;
+    }
+
+    /**
 	 * @param equivalent_URI
 	 * @param proximity
 	 * @param schema

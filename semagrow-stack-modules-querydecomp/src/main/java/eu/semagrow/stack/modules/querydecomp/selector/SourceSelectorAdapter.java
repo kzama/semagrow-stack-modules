@@ -10,9 +10,7 @@ import org.openrdf.query.Dataset;
 import org.openrdf.query.algebra.StatementPattern;
 import org.openrdf.query.algebra.TupleExpr;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by angel on 5/27/14.
@@ -26,7 +24,6 @@ public class SourceSelectorAdapter implements SourceSelector {
         this.resourceSelector = resourceSelector;
     }
 
-
     public List<SourceMetadata> getSources(StatementPattern pattern, Dataset dataset, BindingSet bindings) {
         List<SourceMetadata> list = new LinkedList<SourceMetadata>();
         for (SelectedResource r : resourceSelector.getSelectedResources(pattern,0)) {
@@ -34,6 +31,14 @@ public class SourceSelectorAdapter implements SourceSelector {
         }
 
         return list;
+    }
+
+    public List<SourceMetadata> getSources(Iterable<StatementPattern> patterns, Dataset dataset, BindingSet bindings) {
+        List<SourceMetadata> sourceMetadata = new LinkedList<SourceMetadata>();
+        for (StatementPattern p : patterns) {
+            sourceMetadata.addAll(getSources(p, dataset, bindings));
+        }
+        return sourceMetadata;
     }
 
     public List<SourceMetadata> getSources(TupleExpr expr, Dataset dataset, BindingSet bindings) {
@@ -51,17 +56,23 @@ public class SourceSelectorAdapter implements SourceSelector {
                 return endpoints;
             }
 
-            public StatementPattern originalPattern() {
+            public StatementPattern original() {
                 return pattern;
             }
 
-            public boolean requiresTransform() {
+            public StatementPattern target() {
+                return pattern;
+            }
+
+            public boolean isTransformed() {
                 return false;
             }
 
             public double getSemanticProximity() {
                 return 1;
             }
+
+            public Collection<URI> getSchema(String var) { return Collections.emptySet(); }
         };
 
         return metadata;

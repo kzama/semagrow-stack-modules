@@ -12,6 +12,7 @@ import org.openrdf.query.algebra.TupleExpr;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by angel on 6/27/14.
@@ -21,12 +22,12 @@ public class InterceptingEvaluationStrategyImpl extends EvaluationStrategyImpl
 
     private List<QueryEvaluationInterceptor> interceptors = new LinkedList<QueryEvaluationInterceptor>();
 
-    public InterceptingEvaluationStrategyImpl(QueryExecutor queryExecutor, ValueFactory vf) {
-        super(queryExecutor, vf);
+    public InterceptingEvaluationStrategyImpl(QueryExecutor queryExecutor, ExecutorService executor, ValueFactory vf) {
+        super(queryExecutor, executor, vf);
     }
 
-    public InterceptingEvaluationStrategyImpl(QueryExecutor queryExecutor) {
-        super(queryExecutor);
+    public InterceptingEvaluationStrategyImpl(QueryExecutor queryExecutor, ExecutorService executor) {
+        super(queryExecutor, executor);
     }
 
     public void addEvaluationInterceptor(QueryEvaluationInterceptor interceptor) {
